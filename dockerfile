@@ -1,47 +1,61 @@
 FROM node:22-alpine AS builder
-
 WORKDIR /app
 
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-
+# native build deps (bcrypt etc)
 RUN apk add --no-cache python3 make g++
 
-COPY backend ./backend
-
+# ---- backend build ----
+COPY backend/package*.json ./backend/
 WORKDIR /app/backend
-RUN npm install
+RUN npm ci
+COPY backend ./
 RUN npm run build
 
+# ---- frontend build ----
 WORKDIR /app
-COPY frontend ./frontend
-
+COPY frontend/package*.json ./frontend/
 WORKDIR /app/frontend
-RUN npm install
+RUN npm ci
+COPY frontend ./
 
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-
-RUN if [ -z "$NEXT_PUBLIC_API_URL" ]; then \
-      echo "ERROR: NEXT_PUBLIC_API_URL is required" && exit 1; \
-    fi
-
+ARG NEXT_PUBLIC_API_URL=/api
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
+
 
 FROM node:22-alpine AS runner
-
 WORKDIR /app
-
 ENV NODE_ENV=production
 
-COPY --from=builder /app/backend /app/backend
+# nginx + supervisor
+RUN apk add --no-cache nginx supervisor \
+  && mkdir -p /run/nginx \
+  && rm -f /etc/nginx/http.d/default.conf
+
+# ---- backend runtime ----
+COPY backend/package*.json /app/backend/
+WORKDIR /app/backend
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/backend/dist /app/backend/dist
+COPY --from=builder /app/backend/config /app/backend/config
+COPY --from=builder /app/backend/models /app/backend/models
+COPY --from=builder /app/backend/routes /app/backend/routes
+COPY --from=builder /app/backend/middleware /app/backend/middleware
+COPY --from=builder /app/backend/utils /app/backend/utils
+
+# ---- frontend runtime ----
+COPY frontend/package*.json /app/frontend/
+WORKDIR /app/frontend
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/frontend/.next /app/frontend/.next
 COPY --from=builder /app/frontend/public /app/frontend/public
-COPY --from=builder /app/frontend/package.json /app/frontend/package.json
 
-WORKDIR /app/backend
+# nginx + supervisor configs
+WORKDIR /app
+COPY deploy/single/nginx.conf /etc/nginx/http.d/default.conf
+COPY deploy/single/supervisord.conf /etc/supervisord.conf
 
-EXPOSE 5000
-
-CMD ["node", "dist/index.js"]
+EXPOSE 8080
+CMD ["supervisord","-c","/etc/supervisord.conf"]
