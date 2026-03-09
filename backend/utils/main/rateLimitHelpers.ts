@@ -26,14 +26,22 @@ const cleanup_duration = 24 * 60 * 60 * 1000
 
 // get ip address
 export const getClientIP = (req: Request): string => {
-    const xForwardedFor = req.headers['x-forwarded-for']
-    const xRealIP = req.headers['x-real-ip']
     const cfConnectingIP = req.headers['cf-connecting-ip']
-    
-    if (typeof xForwardedFor === 'string') return xForwardedFor.split(',')[0].trim()
-    if (typeof xRealIP === 'string') return xRealIP
-    if (typeof cfConnectingIP === 'string') return cfConnectingIP
-    
+    if (cfConnectingIP) {
+        return (Array.isArray(cfConnectingIP) ? cfConnectingIP[0] : (cfConnectingIP as string)).trim()
+    }
+
+    const xForwardedFor = req.headers['x-forwarded-for']
+    if (xForwardedFor) {
+        const ip = Array.isArray(xForwardedFor) ? xForwardedFor[0] : xForwardedFor.split(',')[0]
+        return ip.trim()
+    }
+
+    const xRealIP = req.headers['x-real-ip']
+    if (xRealIP) {
+        return (Array.isArray(xRealIP) ? xRealIP[0] : (xRealIP as string)).trim()
+    }
+
     return req.ip || req.socket.remoteAddress || ''
 }
 

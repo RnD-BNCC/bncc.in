@@ -14,7 +14,7 @@ export default function Footer() {
             role: "Full Stack Developer",
             position: "FILE Manager | BNCC KMG 36",
             image: "/images/footer/photo-akbar.webp",
-            linkedin: "https://www.linkedin.com/in/akbar-zaidan-rohman/",
+            linkedin: "https://www.linkedin.com/in/akbarzaidanr/",
             instagram: "https://instagram.com/akbrzr"
         }, {
             name: "Tasya Pandya Latifa",

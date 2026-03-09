@@ -1,5 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://z:5000'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://z:3000'
 
 const getToken = () => {
     if (typeof window !== 'undefined') {
